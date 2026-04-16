@@ -25,7 +25,6 @@ class ProfileAiModel extends ProfileAiEntity {
     );
   }
 
-  @override
   Map<String, dynamic> toJson() {
     return {
       'response': advice,

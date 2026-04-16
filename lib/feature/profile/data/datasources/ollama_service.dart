@@ -1,50 +1,32 @@
 import 'dart:convert';
-import 'package:http/http.dart' as http;
+import 'package:prfilepage/core/network/api_client.dart'; // تأكد من المسار الصحيح
 
 class OllamaService {
-  // للـ Web يفضل استخدام 127.0.0.1 لضمان استقرار الاتصال
-  static const String _baseUrl = 'http://127.0.0.1:11434/api/generate';
+  final ApiClient _apiClient = ApiClient();
+
   Future<Map<String, dynamic>> fetchAiResponse(String prompt) async {
     try {
-      final response = await http.post(
-        Uri.parse(_baseUrl),
-        headers: {
-          'Content-Type': 'application/json',
-          // أحياناً المتصفح يحتاج تحديد نوع الاستجابة المتوقعة
-          'Accept': 'application/json',
-        },
-        body: jsonEncode({
-          "model": "llama3",
-          "prompt": prompt,
-          "stream": false,
-          "format": "json", // يضمن أن الرد سيكون JSON صالح فقط
-        }),
-      );
+      final response = await _apiClient.postData('generate', {
+        "model": "llama3",
+        "prompt": prompt,
+        "stream": false,
+        "format": "json",
+      });
 
       if (response.statusCode == 200) {
-        // 1. فك JSON الخاص بـ Ollama نفسه
-        final Map<String, dynamic> outerData = jsonDecode(response.body);
-
-        // 2. استخراج محتوى الرد (response)
+        // Dio يقوم بعمل jsonDecode تلقائياً، لذا نستخدم response.data مباشرة
+        final Map<String, dynamic> outerData = response.data;
         final String rawContent = outerData['response'] ?? "";
 
-        if (rawContent.isEmpty) {
-          throw Exception("Ollama returned an empty response");
-        }
+        if (rawContent.isEmpty) throw Exception("Empty response");
 
-        // 3. فك محتوى الرد لتحويله لـ Map (الاسم، الصورة، النصيحة)
         return jsonDecode(rawContent) as Map<String, dynamic>;
       } else {
         throw Exception("Server Error: ${response.statusCode}");
       }
     } catch (e) {
-      // طباعة التفاصيل في الـ Debug Console لسهولة الإصلاح
-      print("--- Ollama Debug Start ---");
-      print("Error Detail: $e");
-      print("--- Ollama Debug End ---");
-
-      // نرسل رسالة واضحة للـ Cubit
-      throw Exception("خطأ في الاتصال: تأكدي أن Ollama يعمل بالأمر الخاص بالـ CORS");
+      print("Ollama Error: $e");
+      throw Exception("تأكد أن Ollama يعمل ومفعل فيه خاصية الـ CORS");
     }
   }
 }
